@@ -368,6 +368,8 @@ def softmaxloss_forward(x, labels):
     
     # For numerical reasons, subtract the minimum value along each column
     x = x - np.min(x, axis=0)
+
+    # labels -=1
     
     # Implement here
     x_c = x[labels, np.arange(batch)] # An array with all x_c in the batch

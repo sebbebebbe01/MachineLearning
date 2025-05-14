@@ -1,10 +1,13 @@
 import numpy as np
 from matplotlib import pyplot as plt
 import scipy
+from sklearn import metrics
 
 from layers import (fully_connected_forward, fully_connected_backward, conv_with_padding_forward, 
                     conv_with_padding_backward, maxpooling_backward, maxpooling_forward, 
                     relu_backward, relu_forward, softmaxloss_backward, softmaxloss_forward)
+plt.rcParams.update({'font.size': 13})
+
 
 def cifar10_starter():
     """
@@ -20,7 +23,7 @@ def cifar10_starter():
     # Add relevant imports based on your specific implementation.
     
     # Load CIFAR-10 dataset
-    base_path = "/your/path/here/"
+    base_path = ""
     mat_file_path = base_path + "all_data.mat"
     try:
         mat_data = scipy.io.loadmat(mat_file_path)
@@ -31,7 +34,7 @@ def cifar10_starter():
     if mat_data is not None:
         x_train = mat_data['x_train']
         x_train = x_train.reshape((32, 32, 3, 50000), order='F').astype(np.float32)
-        y_train = mat_data['y_train'].reshape(-1) + 1
+        y_train = mat_data['y_train'].reshape(-1) # Removed the plus 1
     mat_file_path = base_path + "cifar_test.mat"
     try:
         mat_data = scipy.io.loadmat(mat_file_path)
@@ -42,10 +45,16 @@ def cifar10_starter():
     if mat_data is not None:
         x_test = mat_data['x_test']
         x_test = x_test.reshape((32, 32, 3, 10000), order='F').astype(np.float32)
-        y_test = mat_data['y_test'].reshape(-1) + 1
+        x_test = x_test.transpose((1,0,2,3)) # Transpose to have the same orientation as training
+        y_test = mat_data['y_test'].reshape(-1) -1 # Removed the plus 1 and added a minus 1?? Y'all need to fix your indexing
 
     # Visualize images (optional)
     # Add visualization code here
+    # img = x_test[:, :, :, 2] # Select an image
+    # img = np.clip(img / 255.0, 0, 1) # Normalise to [0, 1] for plt.imshow
+    # img = np.transpose(img, (1,0,2)) # Transpose for correct orientation
+    # plt.imshow(img)
+    # plt.show()
 
     # Preprocess the data
     data_mean = np.mean(x_train)
@@ -62,31 +71,35 @@ def cifar10_starter():
     y_train = y_train[:-2000]
 
     # Define the neural network architecture
-    net = {
-        'layers': [
-            {'type': 'input', 'params': {'size': (32, 32, 3)}},
-            {'type': 'convolution', 'params': {'weights': 0.1 * np.random.randn(5, 5, 3, 16) / np.sqrt(5 * 5 * 3 / 2), 'biases': np.zeros((16,1))},
-             'padding': [2, 2]},
-            {'type': 'relu'},
-            {'type': 'maxpooling'},
-            {'type': 'convolution', 'params': {'weights': 0.1 * np.random.randn(5, 5, 16, 16) / np.sqrt(5 * 5 * 16 / 2), 'biases': np.zeros((16,1))},
-             'padding': [2, 2]},
-            {'type': 'relu'},
-            {'type': 'fully_connected', 'params': {'weights': np.random.randn(10, 4096) / np.sqrt(4096 / 2), 'biases': np.zeros((10,1))}},
-            {'type': 'softmaxloss'}
-        ]
-    }
+    # net = {
+    #     'layers': [
+    #         {'type': 'input', 'params': {'size': (32, 32, 3)}},
+    #         {'type': 'convolution', 'params': {'weights': 0.1 * np.random.randn(5, 5, 3, 16) / np.sqrt(5 * 5 * 3 / 2), 'biases': np.zeros((16,1))},
+    #          'padding': [2, 2]},
+    #         {'type': 'relu'},
+    #         {'type': 'maxpooling'},
+    #         {'type': 'convolution', 'params': {'weights': 0.1 * np.random.randn(5, 5, 16, 16) / np.sqrt(5 * 5 * 16 / 2), 'biases': np.zeros((16,1))},
+    #          'padding': [2, 2]},
+    #         {'type': 'relu'},
+    #         {'type': 'fully_connected', 'params': {'weights': np.random.randn(10, 4096) / np.sqrt(4096 / 2), 'biases': np.zeros((10,1))}},
+    #        {'type': 'softmaxloss'}
+    #     ]
+    # }
+
+    # ... or continue from a previous network
+    net_name = 'cifar_net_incr_lr_batchsize.npy'
+    net = np.atleast_1d(np.load(net_name, allow_pickle=True))[0]
 
     # Display layer sizes
     a, b = evaluate(net, x_train[:, :, :, :8], y_train[:8], True, True)
 
     # Define training options
     training_opts = {
-        'learning_rate': 1e-3,
-        'iterations': 5000,
-        'batch_size': 16,
-        'momentum': 0.95,
-        'weight_decay': 0.001
+        'learning_rate': 1e-3, # Default 1e-3
+        'iterations': 1000, # Default 5000
+        'batch_size': 128, # Default 16
+        'momentum': 0.85, # Defualt 0.95
+        'weight_decay': 0.001 # Default 0.001
     }
 
     # Train the neural network
@@ -95,6 +108,8 @@ def cifar10_starter():
     # Save the trained model
     # You need to implement the saving mechanism based on your specific implementation
     # For example, using pickle or a custom save function
+
+    np.save('./cifar_net_INSERT_NAME.npy', net)
 
     # Evaluate on the test set
     pred = np.zeros(len(y_test))
@@ -105,7 +120,7 @@ def cifar10_starter():
         p = np.argmax(y[-2], axis=0)
         pred[idx] = p
 
-    pred = pred + 1  # NOTE: cifar labels go from 1 to 10
+    np.save('./cifar_pred_INSERT_NAME.npy', pred)
 
     accuracy = np.mean(pred == y_test)
     print(f'Accuracy on the test set: {accuracy}')
@@ -223,7 +238,7 @@ def mnist_starter():
     None
     """
 
-    base_path = "/your/path/here/"
+    base_path = ""
     mat_file_path = base_path + "train.mat"
     try:
         mat_data = scipy.io.loadmat(mat_file_path)
@@ -235,7 +250,7 @@ def mnist_starter():
         x_train = mat_data['x_train']
         x_train = x_train.reshape((28,28,1,60000), order='F')
         y_train = mat_data['y_train']
-        y_train[y_train==0] = 10
+        # y_train[y_train==0] = 10 # Not good
     mat_file_path = base_path + "test.mat"
     try:
         mat_data = scipy.io.loadmat(mat_file_path)
@@ -247,7 +262,7 @@ def mnist_starter():
         x_test = mat_data['x_test']
         x_test = x_test.reshape((28,28,1,10000), order='F')
         y_test = mat_data['y_test']
-        y_test[y_test == 0] = 10
+        # y_test[y_test == 0] = 10 # Also not good
     classes = [1,2,3,4,5,6,7,8,9,0]
 
     # Reshape training data
@@ -285,10 +300,10 @@ def mnist_starter():
 
     # Training options
     training_opts = {
-        'learning_rate': 1e-1,
+        'learning_rate': 0.8e-1,
         'iterations': 3000,
         'batch_size': 16,
-        'momentum': 0.9,
+        'momentum': 0.92,
         'weight_decay': 0.005
     }
 
@@ -307,13 +322,14 @@ def mnist_starter():
         p = np.argmax(y[-2], axis=0)
         pred[idx] = p
 
-    pred = pred + 1  # Labels go from 1 to 10
     y_test = y_test.squeeze()
+    np.save('./predicted_labels.npy', pred)
 
     accuracy = np.mean(pred == y_test)
     print(f'Accuracy on the test set: {accuracy:.4f}')
 
-    # Plot some misclassified examples ... 
+    ### Plotting and such is done in the function analyse_mnist_net()
+
 
 def training(net, x, labels, x_val, labels_val, opts, make_plots=False):
     """
@@ -372,7 +388,7 @@ def training(net, x, labels, x_val, labels_val, opts, make_plots=False):
         # We have a fully connected layer before the softmax loss
         # The prediction is the index corresponding to the highest score
         pred = np.argmax(z[-2], axis=0)
-        accuracy[it] = np.mean(labels_batch.reshape(-1) == pred + 1)
+        accuracy[it] = np.mean(labels_batch.reshape(-1) == pred)  # NOT pred + 1!! These matlab shenanigans need to stop...
 
         if it < 20:
             loss_ma[it] = np.mean(loss[:(it+1)])
@@ -399,9 +415,9 @@ def training(net, x, labels, x_val, labels_val, opts, make_plots=False):
 
                     # Momentum and update
                     if 'momentum' in opts:
-                        momentum[i][0][s] = opts['momentum'] * momentum[i][0][s] + (1 - opts['momentum']) * grads[i][s]
-                        net["layers"][i]["params"][s] -= opts['learning_rate'] * (momentum[i][0][s] +
-                                                          (opts['weight_decay'] * net["layers"][i]["params"][s]))
+                        momentum[i][0][s] = opts['momentum']*momentum[i][0][s] + (1-opts['momentum'])*(grads[i][s])
+                        net['layers'][i]['params'][s] -= opts['learning_rate'] * (momentum[i][0][s] + 
+                            opts['weight_decay'] * net['layers'][i]['params'][s])
                     else:
                         # Run normal gradient descent if the momentum parameter is not specified
                         net["layers"][i]["params"][s] -= opts['learning_rate'] * (grads[i][s] +
@@ -417,7 +433,7 @@ def training(net, x, labels, x_val, labels_val, opts, make_plots=False):
 
                 z_val, _ = evaluate(net, x_batch_val, labels_batch_val, evaluate_gradient=False)
                 pred_val = np.argmax(z_val[-2], axis=0)
-                correct[k, :] = ((labels_batch_val.reshape(-1) - 1) == pred_val)
+                correct[k, :] = ((labels_batch_val.reshape(-1)) == pred_val) # NOT labels_batch_val.reshape(-1) - 1!!!!
 
             val_it.append(it)
             val_acc.append(0.5 * val_acc[-1] + 0.5 * np.mean(correct))
@@ -446,6 +462,207 @@ def training(net, x, labels, x_val, labels_val, opts, make_plots=False):
 
     return net, loss
 
+def analyse_mnist_net():
+    '''
+    Loads the already trained neural network for plotting and analysis.
+    '''
+    base_path = ""
+    mat_file_path = base_path + "test.mat"
+    try:
+        mat_data = scipy.io.loadmat(mat_file_path)
+    except FileNotFoundError:
+        print(f"Error: File '{mat_file_path}' not found.")
+        mat_data = None
+    if mat_data is not None:
+        x_test = mat_data['x_test']
+        x_test = x_test.reshape((28,28,1,10000), order='F')
+        y_test = mat_data['y_test']
+    y_test = y_test.squeeze()
+
+    net = np.atleast_1d(np.load('network_trained_with_momentum.npy', allow_pickle=True))[0]
+    pred = np.load('predicted_labels.npy').astype(int)
+
+    ### Print the number of parameters in each layer:
+    for layer in net['layers']:
+        if layer['type'] != 'input':
+            print(r'\textbf{' + str(layer['type']) + '}', end='')
+            if 'params' in layer.keys():
+                params = layer['params']
+                for s in params:
+                    print(' &', params[s].shape, end='')
+                    print(' &', np.prod(params[s].shape), end='')
+            print(r' \\')
+
+    ### Plot the convolution kernels
+
+    conv = net['layers'][1]['params']['weights'] # Gets all kernels from the first convolutional layer
+
+    fig_conv, axs_conv = plt.subplots(4, 4) # Assuming nr_filters = 16 (default)
+    i = 0
+    for row in range(4):
+        for col in range(4):
+            kernel = conv[:,:,0,i]
+            axs_conv[row,col].imshow(kernel)
+            axs_conv[row,col].axis('off')
+            i += 1
+    fig_conv.suptitle('Visualisation of kernels')
+
+    ### Plot some misclassified examples ... 
+    mis_class_idx = np.flatnonzero(pred != y_test) # Should be a few hundred misclassified digits
+
+    nr_plots = 9 # Assumed to be less than the number of misclassified digits
+    rand_idx = np.random.choice(mis_class_idx,nr_plots,replace=False)
+
+    fig_mis, axs_mis = plt.subplots(3, 3)
+    i = 0
+    for row in range(3):
+        for col in range(3):
+            idx = rand_idx[i]
+            x = x_test[:,:,0,idx]
+            y = y_test[idx]
+            predicted_val = pred[idx]
+            axs_mis[row,col].imshow(x)
+            axs_mis[row,col].set_title('Predicted: ' + str(int(predicted_val)) + '. Actual: ' + str(int(y)))
+            axs_mis[row,col].axis('off')
+            i += 1
+    
+    ### Plot the confusion matrix
+    confusion_matrix = metrics.confusion_matrix(y_test, pred)
+    cm_display = metrics.ConfusionMatrixDisplay(confusion_matrix = confusion_matrix, display_labels = np.arange(10))
+    cm_display.plot()
+
+    ## Precision
+    print('Precision (%):')
+    print(np.round(100*np.diag(confusion_matrix)/np.sum(confusion_matrix, axis = 0),2))
+    ## Recall
+    print('Recall (%):')
+    print(np.round(100*np.diag(confusion_matrix)/np.sum(confusion_matrix, axis = 1),2))
+
+    plt.show()
+
+def analyse_cifar():
+    '''
+    Loads the pre-trained network in net_name and its corresponding predictions on the test set in pred_name
+    
+    '''
+
+    net_name = 'cifar_net_FINAL.npy'
+    pred_name = 'cifar_pred_FINAL.npy'
+
+    net = np.atleast_1d(np.load(net_name, allow_pickle=True))[0]
+    pred = np.load(pred_name).astype(int)
+
+
+    # Load CIFAR-10 test data labels
+    mat_file_path = "cifar_test.mat"
+    try:
+        mat_data = scipy.io.loadmat(mat_file_path)
+    except FileNotFoundError:
+        print(f"Error: File '{mat_file_path}' not found.")
+        mat_data = None
+
+    if mat_data is not None:
+        x_test = mat_data['x_test']
+        x_test = x_test.reshape((32, 32, 3, 10000), order='F').astype(np.float32)
+        x_test = x_test.transpose((1,0,2,3)) # Transpose to have the same orientation as training
+        y_test = mat_data['y_test'].reshape(-1) -1 # Removed the plus 1 and added a minus 1?? Y'all need to fix your indexing
+
+
+    ### Visualise convolution kernels
+    ## Find the first convolution layer
+    conv_idx = 0
+    for layer in net['layers']:
+        if layer['type']=='convolution':
+            break
+        conv_idx += 1
+
+    kernels = net['layers'][conv_idx]['params']['weights'] # With shape (width, height, channels, nr_of_filters)
+
+    plot_width = int(kernels.shape[-1]**0.5)
+    fig_ker, axs_ker = plt.subplots(plot_width, plot_width)
+    i = 0
+    for row in range(plot_width):
+        for col in range(plot_width):
+            img = kernels[:,:,:,i]
+            # Normalising
+            mini = np.min(img) # Takes the minimum value out of all channels
+            maxi = np.max(img) # Takes the maximum --||--
+            img = (img-mini)/(maxi-mini) # Normalises, problem
+
+            img = np.transpose(img, (1,0,2)) # Transpose for 'correct' orientation (same orientation as x)
+            
+            axs_ker[row,col].imshow(img)
+            axs_ker[row,col].axis('off')
+
+            i+=1
+
+    fig_ker.suptitle('Visualisation of kernels')
+
+    ### Print the number of parameters in each layer:
+    for layer in net['layers']:
+        if layer['type'] != 'input':
+            print(r'\textbf{' + str(layer['type']) + '}', end='')
+            if 'params' in layer.keys():
+                params = layer['params']
+                for s in params:
+                    print(' &', params[s].shape, end='')
+                    print(' &', np.prod(params[s].shape), end='')
+            print(r' \\')
+
+    ### Plot some misclassified examples 
+    mis_class_idx = np.flatnonzero(pred != y_test) # Should be quite a few...
+
+    nr_plots = 9 # Assumed to be less than the number of misclassified digits
+    rand_idx = np.random.choice(mis_class_idx,nr_plots,replace=False)
+
+    fig_mis, axs_mis = plt.subplots(3, 3, figsize=(8, 8))
+    i = 0
+    class_dict = {0 : 'airplane',
+                        1 : 'automobile',
+                        2 : 'bird',
+                        3 : 'cat',
+                        4 : 'deer',
+                        5 : 'dog',
+                        6 : 'frog',
+                        7 : 'horse',
+                        8 : 'ship',
+                        9 : 'truck'}
+    for row in range(3):
+        for col in range(3):
+            idx = rand_idx[i]
+            x = x_test[:,:,:,idx].astype(int).transpose((1,0,2))
+            y = class_dict[y_test[idx]]
+            predicted_class = class_dict[pred[idx]]
+            axs_mis[row,col].imshow(x)
+            axs_mis[row,col].set_title('Predicted: ' + predicted_class + '\nActual: ' + y)
+            axs_mis[row,col].axis('off')
+            i += 1
+    fig_mis.subplots_adjust(bottom=0.0, right=0.958, top=0.922, left=0.072)
+    fig_mis.tight_layout()
+    
+    ### Plot the confusion matrix
+    confusion_matrix = metrics.confusion_matrix(y_test, pred)
+    cm_display = metrics.ConfusionMatrixDisplay(confusion_matrix = confusion_matrix, display_labels = class_dict.values())
+    cm_display.plot()
+    plt.xticks(rotation=90)
+    cm_display.figure_.subplots_adjust(bottom=0.3, right=0.925, top=0.965)
+
+    ## Precision
+    print('Precision (%):')
+    print(np.round(100*np.diag(confusion_matrix)/np.sum(confusion_matrix, axis = 0),2))
+    ## Recall
+    print('Recall (%):')
+    print(np.round(100*np.diag(confusion_matrix)/np.sum(confusion_matrix, axis = 1),2))
+
+    plt.show()
+
+
+
+
+
 if __name__ == "__main__":
-    mnist_starter()
-    #cifar10_starter()
+    # mnist_starter()
+    # analyse_mnist_net()
+
+    # cifar10_starter()
+    analyse_cifar()

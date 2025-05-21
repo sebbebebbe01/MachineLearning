@@ -1,6 +1,7 @@
 import numpy as np
 import time
 from matplotlib import pyplot as plt
+from matplotlib.widgets import Button
 from helper_functions import gen_snake_grid, get_states_next_state_idxs, policy_iteration, grid_to_state_4_tuple, update_snake_grid
 
 # ----------- Main Script ------------
@@ -22,7 +23,7 @@ nbr_apples = 1
 # ----- YOU MAY CHANGE SETTINGS BELOW UNLESS OTHERWISE NOTIFIED! ----------
 
 # Updates per second (when watching the agent play).
-updates_per_sec = 5
+updates_per_sec = 50
 
 # Stuff related to the learning agent
 rewards = {'default': 0, 'apple': 1, 'death': -1}
@@ -30,12 +31,12 @@ rewards = {'default': 0, 'apple': 1, 'death': -1}
 # Tolerance in policy evaluation - ALLOWED TO BE CHANGED
 # Experiment with different tolerances (try as small as 1e-4, up to as
 # large as 1e4). Does the tolerance affect the final policy (SEE EXERCISE 5)?
-pol_eval_tol = 1e0
+pol_eval_tol = 1e-4
 
 # Discount factor gamma - ALLOWED TO BE CHANGED
 # Experiment with gamm; set it to 0, 1 and some values in (0,1). 
 # What happens in the respective cases (SEE EXERCISE 5)?
-gamm = 0.5
+gamm = 0.95
 
 # ------- DO NOT CHANGE ANYTHING BELOW THIS LINE! -----------------------
 # ------- BUT DON'T FORGET TO IMPLEMENT policy_iteration.m --------------
@@ -78,7 +79,7 @@ while True:
                          (states[:, 3] == state[3]))[0][0]
     action = policy[state_idx]
 
-    time.sleep(1 / updates_per_sec)
+    # time.sleep(1 / updates_per_sec)
 
     grid, score, terminate = update_snake_grid(grid, snake_len, score, action)
 
@@ -91,4 +92,5 @@ while True:
     ax.clear()
     ax.imshow(grid_show, animated=True)
     ax.set_title('Current score: ' + str(score))
+
     plt.pause(0.1)

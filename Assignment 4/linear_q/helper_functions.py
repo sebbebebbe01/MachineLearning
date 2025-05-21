@@ -104,9 +104,9 @@ def gen_snake_grid(N=30, snake_len=None, nbr_apples=1):
 
     # Insert snake with its head in the center, facing a random direction (north/east/south/west)
     head_loc = [int(N / 2), int(N / 2)]
-    head_loc = [14, 14]
+    # head_loc = [14, 14]
     snake_rot = np.random.randint(1, 5)  # 1: north, 2: east, 3: south, 4: west
-    snake_rot = 1
+    # snake_rot = 1
     if snake_rot == 1:
         tail_loc = [head_loc[0] + snake_len - 1, head_loc[1]]
         grid[head_loc[0]:tail_loc[0] + 1, head_loc[1]] = np.arange(snake_len + 1, 1, -1)
@@ -129,7 +129,7 @@ def gen_snake_grid(N=30, snake_len=None, nbr_apples=1):
         # has a separate location and doesn't collide with the snake
         while True:
             apple_loc = np.random.randint(0, N - 1, size=(1, 2))  # N-1, since cannot be at walls
-            apple_loc = np.array([[5,5]])
+            # apple_loc = np.array([[5,5]])
             if not np.any(np.all(occ_locs == apple_loc, axis=1)):
                 break
 
@@ -143,7 +143,7 @@ def extract_state_action_features(prev_grid, grid, prev_head_loc, nbr_feats):
     # Extract grid size
     N = grid.shape[0]
 
-    # Initialize state_action_feats to nbr_feats-by-2 matrix
+    # Initialize state_action_feats to nbr_feats-by-3 matrix
     state_action_feats = np.empty((nbr_feats, 3))
     state_action_feats[:] = np.nan
 
@@ -180,17 +180,70 @@ def extract_state_action_features(prev_grid, grid, prev_head_loc, nbr_feats):
     # you choose (3 are used below), and of course replace the randn()
     # by something more sensible.
 
-    snake_len_init = 10
+    snake_len = np.sum(grid[1:N-1,1:N-1] > 0)
+    apple_locs = np.argwhere(grid == -1)
+
     for action in range(1, 4):  # Evaluate all the different actions (left, forward, right).
         # Feel free to uncomment below line of code if you find it useful.
         next_head_loc, next_move_dir = get_next_info(action, movement_dir, head_loc)
 
-        # Replace this to fit the number of state-action features per features
-        # you choose (3 are used below), and of course replace the randn()
-        # by something more sensible.
-        state_action_feats[0, action-1] = np.random.randn()
-        state_action_feats[1, action-1] = np.random.randn()
-        state_action_feats[2, action-1] = np.random.randn()
+        # ## Distance to closest wall after moving
+        # state_action_feats[0, action-1] = np.min( (abs(next_head_loc - np.array([N-1, N-1])), abs(next_head_loc)) ) / N
+        
+        ## Manhattan norm to (closest) apple after moving, normalised and divided by the length of the snake
+        manhattan_apple_distances = np.linalg.norm(next_head_loc - apple_locs, ord = 1, axis = 1)
+        state_action_feats[0, action-1] = np.min(manhattan_apple_distances) / (2*(N-3))
+        
+        ## Is next tile body or border?
+        is_death = int(grid[next_head_loc[0], next_head_loc[1]] == 1)
+        state_action_feats[1, action-1] = is_death
+
+        ## What's infront of it and to the sides?
+        ## Looks at all tiles in front of the snake and to the sides (excluding border)
+        line_north = np.flip(grid[1 : next_head_loc[0], next_head_loc[1]])
+        line_east = grid[next_head_loc[0], next_head_loc[1]+1 : N-1]
+        line_south = grid[next_head_loc[0]+1 : N-1, next_head_loc[1]]
+        line_west = np.flip(grid[next_head_loc[0], 1 : next_head_loc[1]])
+        if next_move_dir==1: # North
+            line_of_sight, line_right, line_left = line_north, line_east, line_west
+        elif next_move_dir==2: # East
+            line_of_sight, line_right, line_left = line_east, line_south, line_north
+        elif next_move_dir==3: # South
+            line_of_sight, line_right, line_left = line_south, line_west, line_east
+        elif next_move_dir==4: # West
+            line_of_sight, line_right, line_left = line_west, line_north, line_south
+
+        forw_occupied = np.argwhere(line_of_sight == 1)
+        if len(forw_occupied)==0:
+            dist_to_forw_occupied = 1
+        else:
+            dist_to_forw_occupied = forw_occupied[0] / (N-3) # Normalised w.r.t. max distance
+        # if len(line_right)==1:
+        #     dist_to_right_occupied = 0
+        # else:
+        #     right_occupied = np.argwhere(line_right[1:] == 1) # Starting from the tile to the right of the snake
+        #     dist_to_right_occupied = (right_occupied[0]+1) / (N-1) # Normalised w.r.t. max distance
+        # if len(line_left)==1:
+        #     dist_to_left_occupied = 0
+        # else:
+        #     left_occupied = np.argwhere(line_left[1:] == 1) # Starting from the tile to the left of the snake
+        #     dist_to_left_occupied = (left_occupied[0]+1) / (N-1) # Normalised w.r.t. max distance
+        state_action_feats[2, action-1] = dist_to_forw_occupied
+        # state_action_feats[3, action-1] = dist_to_right_occupied
+        # state_action_feats[4, action-1] = dist_to_left_occupied
+
+        # ## Euclidean distance to the centre of mass
+        # grid_no_borders = grid[1:N-1, 1:N-1]
+        # # Get indices of the borderless matrix
+        # rows, cols = np.indices(grid_no_borders.shape)
+        # # Compute centre of mass
+        # total_mass = grid_no_borders.sum()
+        # com = np.array([(rows * grid_no_borders).sum() / total_mass, (cols * grid_no_borders).sum() / total_mass])
+
+        # centre_of_mass_dist = np.linalg.norm(com - (next_head_loc-1), ord=1) / np.sqrt(2) / (N-2)
+        # state_action_feats[2, action-1] = centre_of_mass_dist
+        
+
 
     return state_action_feats, prev_grid, prev_head_loc
 

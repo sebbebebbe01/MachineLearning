@@ -24,23 +24,23 @@ nbr_apples = 1
 
 # ----- YOU MAY CHANGE SETTINGS BELOW UNLESS OTHERWISE NOTIFIED! ----------
 # Specify whether to test the agent or not (False --> train agent)
-test_agent = False
+test_agent = True
 
 # Updates per second (when watching the agent play).
-updates_per_sec = 5
+updates_per_sec = 50
 
 # Set visualization settings
-show_fraction = 0 # 1: show everything, 0: show nothing, 0.1: show every tenth, and so on
+show_fraction = 1 # 1: show everything, 0: show nothing, 0.1: show every tenth, and so on
 
 # Stuff related to the learning agent
 # Stuff related to learning agent (YOU SHOULD EXPERIMENT A LOT WITH THESE
 # SETTINGS - SEE EXERCISE 6).
-rewards = {'default': 0, 'apple': 1, 'death': -1}
+rewards = {'default': -1, 'apple': 2, 'death': -50}
 gamm = 0.9 # Discount factor in q learning
-alph = 0.01 # learning rate in Q learning
+alph = 0.5 # learning rate in Q learning
 eps = 0.01 # Random action selection probability in epsilon-greedy Q-learning
-alph_update_iter = 0 #0: Never update alpha, Positive integer k: Update alpha every kth episode
-alph_update_factor = 0.5 # At alpha update: new alpha = old alpha * alph_update_factor
+alph_update_iter = 100 #0: Never update alpha, Positive integer k: Update alpha every kth episode
+alph_update_factor = 0.95 # At alpha update: new alpha = old alpha * alph_update_factor
 eps_update_iter = 0 # 0: Never update eps, Positive integer k: Update eps every kth episode
 eps_update_factor = 0.5 # At eps update: new eps = old eps * eps_update_factor
 
@@ -170,10 +170,10 @@ for i in range(1, nbr_ep + 1):
             # Hint: Q(s,a) <-- (1 - alpha) * Q(s,a) + sample
             # can be rewritten as Q(s,a) <-- Q(s,a) + alpha * (sample - Q(s,a))
 
-            sample = None
-            pred = None
+            sample = reward # next state is terminal, V(s') = 0
+            pred = Q_vals[state_idx, action]
             td_err = sample - pred # don't change this.
-            Q_vals[state_idx, action] += None
+            Q_vals[state_idx, action] += alph * td_err
 
             # -- DO NOT CHANGE ANYTHING BELOW UNLESS OTHERWISE NOTIFIED ---
             # -- (IMPLEMENT NON-TERMINAL Q-UPDATE FURTHER DOWN) -----------
@@ -218,10 +218,10 @@ for i in range(1, nbr_ep + 1):
         # Q_vals(state_idx, action)
         # Hint: Q(s,a) <-- (1 - alpha) * Q(s,a) + sample
         # can be rewritten as Q(s,a) <-- Q(s,a) + alpha * (sample - Q(s,a))
-        sample = None
-        pred = None
+        sample = reward + gamm * np.max(Q_vals[next_state_idx,:])
+        pred = Q_vals[state_idx, action]
         td_err = sample - pred # don't change this!
-        Q_vals[state_idx, action] += None
+        Q_vals[state_idx, action] += alph * td_err
 
 # Finally, save agent Q-values (if not in test mode already)
 if not test_agent:

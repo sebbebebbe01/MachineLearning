@@ -362,7 +362,7 @@ def policy_iteration(pol_eval_tol, next_state_idxs, rewards, gamm):
 
     # Arbitrary initialization of values and policy.
     values = np.random.randn(1, nbr_states)
-    policy = np.random.randint(0, 3, size=(nbr_states,))  # policy is size 1-by-nbr_states
+    policy = np.random.randint(0, nbr_actions, size=(nbr_states,))  # policy is size 1-by-nbr_states
                                                            # the entries of policy are 0, 1, or 2
                                                            # selected uniformly at random
 
@@ -377,7 +377,25 @@ def policy_iteration(pol_eval_tol, next_state_idxs, rewards, gamm):
         while True:
             Delta = 0
             for state_idx in range(nbr_states):
-                # FILL IN POLICY EVALUATION WITHIN THIS LOOP.
+                V_old = values[0,state_idx] # Gets the old V(s)
+
+                action = policy[state_idx] # Takes the action pi(s) from policy
+
+                if next_state_idxs[state_idx, action] > 0: # Non-terminal state
+                    reward = rewards['default']
+                    next_state_value = values[0,int(next_state_idxs[state_idx, action])]
+                elif next_state_idxs[state_idx, action] == -2: # id = -2 for death
+                    reward = rewards['death']
+                    next_state_value = 0
+                else: # id = -1 for apple
+                    reward = rewards['apple']
+                    next_state_value = 0
+
+                V_new = reward + gamm*next_state_value # Deterministic problem, no probabilities
+
+                Delta = max(Delta, abs(V_old - V_new)) # Update the error
+
+                values[0,state_idx] = V_new # Update to the new V(s)
 
             # Increase nbr_pol_eval counter.
             nbr_pol_eval += 1
@@ -391,11 +409,32 @@ def policy_iteration(pol_eval_tol, next_state_idxs, rewards, gamm):
         # Policy improvement.
         policy_stable = True
         for state_idx in range(nbr_states):
-            # FILL IN POLICY IMPROVEMENT WITHIN THIS LOOP.
+            a_old = policy[state_idx]
+            V_list = []
+            for a in range(nbr_actions):
+                action = a # Test all posible actions
+                if next_state_idxs[state_idx, action] > 0: # Non-terminal state
+                    reward = rewards['default']
+                    next_state_value = values[0,int(next_state_idxs[state_idx, action])]
+                elif next_state_idxs[state_idx, action] == -2: # id = -2 for death
+                    reward = rewards['death']
+                    next_state_value = 0
+                else: # id = -1 for apple
+                    reward = rewards['apple']
+                    next_state_value = 0
+
+                V_a = reward + gamm*next_state_value
+
+                V_list.append(V_a)
+            
+            a_best = np.argmax(V_list) # Get the best action
+            policy[state_idx] = a_best # Update pi(s) to the best choice of action
+            if a_best != a_old:
+                policy_stable = False
 
         # Increase the number of policy iterations.
         nbr_pol_iter += 1
-
+        
         # Check for policy iteration termination
         if policy_stable:
             break

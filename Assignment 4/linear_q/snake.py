@@ -13,28 +13,31 @@ def main():
     nbr_apples = 1
 
     # ----- YOU MAY CHANGE SETTINGS BELOW UNLESS OTHERWISE NOTIFIED! ----------
-    test_agent = False
+    test_agent = True
 
-    updates_per_sec = 20
-    show_fraction = 0
+    updates_per_sec = 50
+    if test_agent:
+        show_fraction = 1/5
+    else:
+        show_fraction = 0
 
     # Stuff related to learning agent (YOU SHOULD EXPERIMENT A LOT WITH THESE
     # SETTINGS - SEE EXERCISE 7)
     nbr_feats = 3
-    rewards = {'default': 0, 'apple': 1, 'death': -1}
-    gamm = 0.99
+    rewards = {'default': -20, 'apple': 100, 'death': -1000}
+    gamm = 0.95
     alph = 0.5
-    eps = 0.5
+    eps = 0.3
 
-    alph_update_iter = 0
-    alph_update_factor = 0.5
-    eps_update_iter = 0
-    eps_update_factor = 0.5
+    alph_update_iter = 100
+    alph_update_factor = 0.95
+    eps_update_iter = 50
+    eps_update_factor = 0.95
 
     # Initial weights. REMEMBER: weights should be set as 1's and -1's in a
     # BAD WAY with respect to your chosen features (see Exercise 8) .
-    init_weights = np.random.randn(nbr_feats,1); # replace with your logic
-    #np.array([[-1], [-1], [-1]])  
+    # init_weights = np.random.randn(nbr_feats,1) # replace with your logic
+    init_weights = np.array([1,1,-1]).reshape((-1,1)).astype(float)
 
     # ------- DO NOT CHANGE ANYTHING BELOW UNLESS OTHERWISE NOTIFIED ---------
     # ------- (FAR DOWN YOU WILL IMPLEMENT Q WEIGHTS UPDATES, SO DO THAT) ----
@@ -128,10 +131,10 @@ def main():
                 # we set future Q-values at terminal states equal to zero]
                 # NOTE: since the features have a different dimension you have to
                 # apply .reshape([nbr_feats, 1]) to it when adding to weights
-                target = None
-                pred = None
+                target = reward # next state is terminal, V(s')=0
+                pred = Q_fun(weights, state_action_feats, action)
                 td_err = target - pred
-                weights = weights #+ Something
+                weights += alph * td_err * state_action_feats[:, action-1].reshape((nbr_feats,1))
                 # -- DO NOT CHANGE ANYTHING BELOW UNLESS OTHERWISE NOTIFIED ---
                 # -- (IMPLEMENT NON-TERMINAL Q WEIGHTS UPDATE FURTHER DOWN) ---
 
@@ -167,10 +170,10 @@ def main():
             # Q_fun(weights, state_action_feats, action), state_action_feats[:, action-1]
             # NOTE: since the features have a different dimension you have to
             # apply .reshape([nbr_feats, 1]) to it when adding to weights
-            target = None
-            pred = None
+            target = reward + gamm * np.max(Q_fun(weights, state_action_feats_future))
+            pred = Q_fun(weights, state_action_feats, action)
             td_err = target - pred # Do not change
-            weights = weights #+ Something
+            weights += alph * td_err * state_action_feats[:, action-1].reshape((nbr_feats, 1))
 
             # ------------ DO NOT CHANGE ANYTHING BELOW ----------------------
 
